@@ -28,7 +28,7 @@ EOF
 # ----- INSTALL PREREQUISITES -----
 echo "Installing prerequisite packages..."
 sudo apt update
-sudo apt install -y qemu-system qemu-utils e2fsprogs parted syslinux-common extlinux wget expect
+sudo apt install -y qemu-system qemu-utils e2fsprogs parted syslinux-common extlinux wget expect flex ninja 
 
 # ----- CREATE RAW DISK IMAGE -----
 echo "Creating raw disk image ($IMAGE) of size $IMG_SIZE..."

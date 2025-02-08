@@ -31,24 +31,7 @@ fi
 # Get the absolute path of the current directory.
 HOST_DIR=$(pwd)
 
-# qemu-system-x86_64 \
-#       -m 512 \
-#       -nic user \
-#       -drive file=${DISK_IMAGE},format=raw,if=virtio \
-#       -cdrom ${ALPINE_ISO} \
-#       -boot d \
-#       -nographic \
-#       -virtfs local,path=${HOST_DIR},mount_tag=hostshare,security_model=none,readonly
-
-echo "Launching QEMU and automating Alpine installation using answer file '$ANSWER_FILE'..."
-expect <<EOF
-  # Enable internal debugging and set timeout
-  exp_internal 1
-  set timeout 300
-
-  # Spawn QEMU.
-  # The -virtfs option now uses the absolute path from HOST_DIR.
-  spawn qemu-system-x86_64 \
+qemu-system-x86_64 \
       -m 512 \
       -nic user \
       -drive file=${DISK_IMAGE},format=raw,if=virtio \
@@ -57,57 +40,74 @@ expect <<EOF
       -nographic \
       -virtfs local,path=${HOST_DIR},mount_tag=hostshare,security_model=none,readonly
 
-  # Wait for the login prompt.
-  expect {
-      -re "localhost login:" { send "root\r\r" }
-      -re "[#\$] " { }  ;# Already at a shell prompt
-      timeout { puts "Timed out waiting for login prompt"; exit 1 }
-  }
+# echo "Launching QEMU and automating Alpine installation using answer file '$ANSWER_FILE'..."
+# expect <<EOF
+#   # Enable internal debugging and set timeout
+#   exp_internal 1
+#   set timeout 300
 
-  # Wait explicitly for a full shell prompt.
-  sleep 1
-  send "\r"
-  expect -re "localhost:~# "
+#   # Spawn QEMU.
+#   # The -virtfs option now uses the absolute path from HOST_DIR.
+#   spawn qemu-system-x86_64 \
+#       -m 512 \
+#       -nic user \
+#       -drive file=${DISK_IMAGE},format=raw,if=virtio \
+#       -cdrom ${ALPINE_ISO} \
+#       -boot d \
+#       -nographic \
+#       -virtfs local,path=${HOST_DIR},mount_tag=hostshare,security_model=none,readonly
 
-  # Mount the shared directory inside the guest
-  send "mkdir -p /mnt/hostshare\r"
-  expect -re "localhost:~# "
-  send "mount -t 9p -o trans=virtio hostshare /mnt/hostshare\r"
-  expect -re "localhost:~# "
+#   # Wait for the login prompt.
+#   expect {
+#       -re "localhost login:" { send "root\r\r" }
+#       -re "[#\$] " { }  ;# Already at a shell prompt
+#       timeout { puts "Timed out waiting for login prompt"; exit 1 }
+#   }
 
-  # Run the unattended installation using the preconfigured answer file.
-  # The answer file is accessed inside the guest via the mounted directory.
-  send "setup-alpine -f /mnt/hostshare/${ANSWER_FILE}\r"
- expect -re "Enter system hostname"
-  send "\r"
+#   # Wait explicitly for a full shell prompt.
+#   sleep 1
+#   send "\r"
+#   expect -re "localhost:~# "
 
-   expect -re "where to store configs"
-   send "\r"
+#   # Mount the shared directory inside the guest
+#   send "mkdir -p /mnt/hostshare\r"
+#   expect -re "localhost:~# "
+#   send "mount -t 9p -o trans=virtio hostshare /mnt/hostshare\r"
+#   expect -re "localhost:~# "
 
-   send "\r"
-     expect -re "apk cache directory"
-     send "\r"
-          send "\r"
-               send "\r"
-          send "\r"
-               send "\r"
-          send "\r"
-               send "\r"
-          send "\r"
-               send "\r"
-          send "\r"
-               send "\r"
-          send "\r"
-          expect -re "Which disk(s) would you like to use"
-  send "sda/r"
-    expect -re "eeee"
-  # Wait for the installer to signal completion (for example, by outputting "poweroff").
-  expect {
-      -re "poweroff" { send_user "\nInstallation complete. QEMU will now power off.\n" }
-      timeout { send_user "\nTimed out waiting for installation to complete; consider increasing timeout.\n" }
-  }
-EOF
+#   # Run the unattended installation using the preconfigured answer file.
+#   # The answer file is accessed inside the guest via the mounted directory.
+#   send "setup-alpine -f /mnt/hostshare/${ANSWER_FILE}\r"
+#  expect -re "Enter system hostname"
+#   send "\r"
 
-echo "Done! The disk image '$DISK_IMAGE' now contains a preinstalled Alpine Linux."
-echo "You can later boot it (without KVM) using, for example:"
-echo "  qemu-system-x86_64 -drive file=${DISK_IMAGE},format=raw -m 512 -nic user -nographic"
+#    expect -re "where to store configs"
+#    send "\r"
+
+#    send "\r"
+#      expect -re "apk cache directory"
+#      send "\r"
+#           send "\r"
+#                send "\r"
+#           send "\r"
+#                send "\r"
+#           send "\r"
+#                send "\r"
+#           send "\r"
+#                send "\r"
+#           send "\r"
+#                send "\r"
+#           send "\r"
+#           expect -re "Which disk(s) would you like to use"
+#   send "sda/r"
+#     expect -re "eeee"
+#   # Wait for the installer to signal completion (for example, by outputting "poweroff").
+#   expect {
+#       -re "poweroff" { send_user "\nInstallation complete. QEMU will now power off.\n" }
+#       timeout { send_user "\nTimed out waiting for installation to complete; consider increasing timeout.\n" }
+#   }
+# EOF
+
+# echo "Done! The disk image '$DISK_IMAGE' now contains a preinstalled Alpine Linux."
+# echo "You can later boot it (without KVM) using, for example:"
+# echo "  qemu-system-x86_64 -drive file=${DISK_IMAGE},format=raw -m 512 -nic user -nographic"
