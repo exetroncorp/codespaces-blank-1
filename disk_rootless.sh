@@ -9,7 +9,7 @@ DISK_IMAGE="alpine_disk.raw"
 DISK_SIZE="2G"
 ALPINE_ISO="alpine-standard-${ALPINE_VERSION}-${ARCH}.iso"
 ISO_URL="https://dl-cdn.alpinelinux.org/alpine/v${ALPINE_VERSION_MAIN}/releases/${ARCH}/${ALPINE_ISO}"
-ANSWER_FILE="alpine-answers"   # preconfigured answer file (must exist in the current directory)
+ANSWER_FILE="alpine-answers"   # This file must exist in your current directory
 
 # === PREPARE THE IMAGE FILE (no sudo, rootless) ===
 echo "Creating raw disk image '$DISK_IMAGE' of size $DISK_SIZE..."
@@ -24,27 +24,30 @@ fi
 # Check that the answer file exists
 if [ ! -f "$ANSWER_FILE" ]; then
     echo "Answer file '$ANSWER_FILE' not found!"
-    echo "Please generate it (e.g. run: setup-alpine -c $ANSWER_FILE) and edit as needed."
+    echo "Please generate it (e.g., run: setup-alpine -c $ANSWER_FILE) and edit as needed."
     exit 1
 fi
 
 # Get the absolute path of the current directory.
 HOST_DIR=$(pwd)
 
-echo "Launching QEMU and automating Alpine installation using answer file '$ANSWER_FILE'..."
+# qemu-system-x86_64 \
+#       -m 512 \
+#       -nic user \
+#       -drive file=${DISK_IMAGE},format=raw,if=virtio \
+#       -cdrom ${ALPINE_ISO} \
+#       -boot d \
+#       -nographic \
+#       -virtfs local,path=${HOST_DIR},mount_tag=hostshare,security_model=none,readonly
 
-expect << EOF
-  # Enable verbose debugging and set a long timeout (300 seconds)
+echo "Launching QEMU and automating Alpine installation using answer file '$ANSWER_FILE'..."
+expect <<EOF
+  # Enable internal debugging and set timeout
   exp_internal 1
   set timeout 300
-  exp_internal 1
-  log_user 1
 
-
-  # Spawn QEMU with the following options:
-  # - Use the raw disk image and Alpine ISO.
-  # - Boot with -nographic.
-  # - Share the current host directory (HOST_DIR) into the guest under the tag "hostshare".
+  # Spawn QEMU.
+  # The -virtfs option now uses the absolute path from HOST_DIR.
   spawn qemu-system-x86_64 \
       -m 512 \
       -nic user \
@@ -54,29 +57,42 @@ expect << EOF
       -nographic \
       -virtfs local,path=${HOST_DIR},mount_tag=hostshare,security_model=none,readonly
 
-  # Wait for either a "login:" prompt or a shell prompt (# or $)
-expect {
-    -re "localhost login:" { send "root\r" }
-}
-
-expect {
-    -re "localhost:~# " { }
-    timeout { puts "Timed out waiting for shell prompt"; exit 1 }
-}
-
-
-
-  # Ensure a shell prompt is present
+  # Wait for the login prompt.
   expect {
-      -re "[#\$] " { }
-      timeout { puts "Timed out waiting for shell prompt"; exit 1 }
+      -re "localhost login:" { send "root\r\r" }
+      -re "[#\$] " { }  ;# Already at a shell prompt
+      timeout { puts "Timed out waiting for login prompt"; exit 1 }
   }
 
-  # Run the unattended installation using the preconfigured answer file.
-  # The answer file is accessible inside the guest at "hostshare/alpine-answers".
-  send "setup-alpine -f hostshare/${ANSWER_FILE}\r"
+  # Wait explicitly for a full shell prompt.
+  sleep 1
+  send "\r"
+  expect -re "localhost:~# "
 
-  # Wait until the installer outputs "poweroff" (installation complete)
+  # Mount the shared directory inside the guest
+  send "mkdir -p /mnt/hostshare\r"
+  expect -re "localhost:~# "
+  send "mount -t 9p -o trans=virtio hostshare /mnt/hostshare\r"
+  expect -re "localhost:~# "
+
+  # Run the unattended installation using the preconfigured answer file.
+  # The answer file is accessed inside the guest via the mounted directory.
+  send "setup-alpine -f /mnt/hostshare/${ANSWER_FILE}\r"
+#   expect -re "New password:"
+#   send "\r"
+#   expect -re "New password:"
+  send "\r"
+  send "\r"
+  send "\r"
+  send "\r"
+  send "\r"
+  send "\r"
+  send "\r"
+
+  send "\r"
+  send "\r"
+
+  # Wait for the installer to signal completion (for example, by outputting "poweroff").
   expect {
       -re "poweroff" { send_user "\nInstallation complete. QEMU will now power off.\n" }
       timeout { send_user "\nTimed out waiting for installation to complete; consider increasing timeout.\n" }

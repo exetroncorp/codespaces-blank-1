@@ -1,18 +1,16 @@
-# Sample answer file for unattended Alpine Linux installation.
-# Save this file as "alpine-answers" and place it in your working directory.
-#
-# This file provides preprogrammed answers to all prompts from setup-alpine.
-# For details, see Alpine’s documentation on setup-alpine answer files:
-# :contentReference[oaicite:0]{index=0}
+# Example answer file for setup-alpine script
+# If you don't want to use a certain option, then comment it out
 
-# Use US keyboard layout (US layout with US variant).
+# Use US layout with US variant
 KEYMAPOPTS="us us"
 
-# Set hostname – change "alpine" to your desired hostname.
-HOSTNAMEOPTS="-n alpine"
+# Set hostname
+HOSTNAMEOPTS="${host}"
 
-# Define the contents of /etc/network/interfaces.
-# This example sets up the loopback interface and configures eth0 via DHCP.
+# Set device manager to mdev
+DEVDOPTS=mdev
+
+# Contents of /etc/network/interfaces
 INTERFACESOPTS="auto lo
 iface lo inet loopback
 
@@ -20,34 +18,40 @@ auto eth0
 iface eth0 inet dhcp
 "
 
-# Set timezone. Here we use UTC; adjust (for example, "-z America/New_York") as desired.
-TIMEZONEOPTS="-z UTC"
+# Search domain of example.com, Google public nameserver
+# DNSOPTS="-d example.com 8.8.8.8"
 
-# Proxy settings: set to "none" if you are not using a proxy.
-PROXYOPTS="none"
+# Set timezone to UTC
+TIMEZONEOPTS="UTC"
 
-# Configure APK repositories.
-# The "-1" option selects the first mirror from the default list.
-APKREPOSOPTS="-1"
+# set http/ftp proxy
+#PROXYOPTS="http://webproxy:8080"
+PROXYOPTS=none
 
-# SSH daemon: choose to install OpenSSH.
-SSHDOPTS="-c openssh"
+# Skip repositories setup and rely on our own apk/repositories from autosetup
+APKREPOSOPTS="-h"
 
-# Network Time Protocol (NTP): choose your preferred client.
-# Here we select chrony; alternatives include openntpd.
-NTPOPTS="-c chrony"
+empty_root_password=1
 
-# Disk installation options.
-# This tells setup-disk to install in "sys" mode onto /dev/sda.
-# (Change the device as needed.)
-DISKOPTS="-m sys /dev/sda"
+# Create admin "alpine" user
+USEROPTS="-a -u -g audio,video,netdev alpine"
+USERSSHKEY="ssh-rsa AAA..." 
+#USERSHKEY="https://example.com/juser.keys"
 
-# For a sys mode install, you typically do not need local backup (lbu) or an APK cache.
-# If desired, uncomment and adjust the lines below:
-#LBUOPTS="/path/to/lbu"
-#APKCACHEOPTS="/path/to/apkcache"
+# Install Openssh
+SSHDOPTS=openssh
+ROOTSSHKEY="ssh-rsa AAA..."
+#ROOTSSHKEY="https://example.com/juser.keys"
 
-# (Optional) Create a non-root administrative user.
-# Uncomment and edit the following lines if you want to add an admin user.
-# USEROPTS="-a -u -g wheel myuser"
-# USERSSHKEY="ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQ... myuser@example.com"
+# Use openntpd
+NTPOPTS="openntpd"
+
+# Use /dev/sda as a sys disk
+# DISKOPTS="-m sys /dev/sda"
+DISKOPTS=none
+
+# Setup config storage, if possible. This value works well with the default setup-create-image.
+LBUOPTS="${lbuopts}"
+
+# Apk cache options. This value works well with the default setup-create-image.
+APKCACHEOPTS="${apkcacheopts}"
