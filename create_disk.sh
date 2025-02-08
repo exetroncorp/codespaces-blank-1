@@ -5,7 +5,8 @@ set -euo pipefail
 IMAGE="disk.raw"
 IMG_SIZE="2G"
 MOUNT_DIR="/tmp/alpine_disk_mount"
-ALPINE_VERSION="3.18.2"
+ALPINE_VERSION="3.21.2"
+ALPINE_VERSION_MAIN="3.21"
 ARCH="x86_64"
 
 # URLs for Alpine netboot kernel and initramfs and the minirootfs tarball.
