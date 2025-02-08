@@ -80,12 +80,26 @@ expect <<EOF
   send "setup-alpine -f /mnt/hostshare/${ANSWER_FILE}\r"
  expect -re "Enter system hostname"
   send "\r"
+
    expect -re "where to store configs"
    send "\r"
+
    send "\r"
      expect -re "apk cache directory"
      send "\r"
           send "\r"
+               send "\r"
+          send "\r"
+               send "\r"
+          send "\r"
+               send "\r"
+          send "\r"
+               send "\r"
+          send "\r"
+               send "\r"
+          send "\r"
+          expect -re "Which disk(s) would you like to use"
+  send "sda/r"
     expect -re "eeee"
   # Wait for the installer to signal completion (for example, by outputting "poweroff").
   expect {
