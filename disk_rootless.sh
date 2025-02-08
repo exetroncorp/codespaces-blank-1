@@ -78,20 +78,15 @@ expect <<EOF
   # Run the unattended installation using the preconfigured answer file.
   # The answer file is accessed inside the guest via the mounted directory.
   send "setup-alpine -f /mnt/hostshare/${ANSWER_FILE}\r"
-#   expect -re "New password:"
-#   send "\r"
-#   expect -re "New password:"
+ expect -re "Enter system hostname"
   send "\r"
-  send "\r"
-  send "\r"
-  send "\r"
-  send "\r"
-  send "\r"
-  send "\r"
-
-  send "\r"
-  send "\r"
-
+   expect -re "where to store configs"
+   send "\r"
+   send "\r"
+     expect -re "apk cache directory"
+     send "\r"
+          send "\r"
+    expect -re "eeee"
   # Wait for the installer to signal completion (for example, by outputting "poweroff").
   expect {
       -re "poweroff" { send_user "\nInstallation complete. QEMU will now power off.\n" }

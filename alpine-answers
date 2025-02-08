@@ -1,3 +1,27 @@
+# Fully automatic Alpine Linux answer file
+KEYMAPOPTS="us us"
+HOSTNAMEOPTS="-n alpine"
+INTERFACESOPTS="auto lo
+iface lo inet loopback
+auto eth0
+iface eth0 inet dhcp
+"
+TIMEZONEOPTS="-z UTC"
+PROXYOPTS="none"
+APKREPOSOPTS="-1"
+SSHDOPTS="-c openssh"
+NTPOPTS="-c chrony"
+DISKOPTS="-m sys /dev/sda"
+
+# Critical security settings (REPLACE WITH YOUR KEY)
+ROOTSSHKEY="ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDj... (your public key here)"
+
+# Optional user configuration (uncomment if needed)
+# USEROPTS="-a -u -g wheel youruser"
+# USERSSHKEY="ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDj... (user public key)"
+
+# Force non-interactive mode
+PACKAGES=""
 # Example answer file for setup-alpine script
 # If you don't want to use a certain option, then comment it out
 
@@ -54,4 +78,4 @@ DISKOPTS=none
 LBUOPTS="${lbuopts}"
 
 # Apk cache options. This value works well with the default setup-create-image.
-APKCACHEOPTS="${apkcacheopts}"
+APKCACHEOPTS=/tmp
