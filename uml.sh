@@ -12,17 +12,16 @@ foo@host:~$ docker run --privileged --name gcc -it gcc /bin/bash
 foo@host:~$ docker exec -it gcc /bin/bash
 
 # Install deps
-foo@gcc:/$ cd ~
-foo@gcc:~$ apt update
-foo@gcc:~$ apt-get -y install build-essential flex bison xz-utils wget ca-certificates bc linux-headers-5.10.0-6-common slirp kmod vim
-
-# Download and configure the linux kernel
-foo@gcc:~$ wget https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.6.76.tar.xz 
-foo@gcc:~$ tar -xf linux-6.6.76.tar.xz # decompress
-foo@gcc:~$ cd linux-6.6.76
-foo@gcc:~/linux-5.12.4$ make mrproper # clean artifacts
-foo@gcc:~/linux-5.12.4$ make defconfig ARCH=um # set a bunch of default configurations (eg: ext4, initramfs etc..) essential
-foo@gcc:~/linux-5.12.4$ make menuconfig ARCH=um # add your own custom config (optional)
+cd ~
+apt update
+apt-get -y install build-essential flex bison xz-utils wget ca-certificates linux-headers-amd64 bc  slirp kmod vim flex
+and configure the linux kernel
+wget https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.6.68.tar.xz
+tar -xf linux-6.6.68.tar.xz  # decompress
+cd linux-6.6.68.tar.xz 
+make mrproper # clean artifacts
+make defconfig ARCH=um # set a bunch of default configurations (eg: ext4, initramfs etc..) essential
+make menuconfig ARCH=um # add your own custom config (optional)
 
 UML Menu (optional)
 General setup
@@ -48,7 +47,7 @@ foo@gcc:~/linux-5.12.4$ lsblk | grep loop0 # optional
 foo@gcc:~/linux-5.12.4$ mount | grep uml # optional
 
 # Download and install the Alpine linux filesystem and tools
-foo@gcc:~/linux-5.12.4$ curl -LO http://dl-cdn.alpinelinux.org/alpine/v3.13/main/x86_64/apk-tools-static-2.12.7-r0.apk
+foo@gcc:~/linux-5.12.4$ curl -LO https://dl-cdn.alpinelinux.org/alpine/v3.21/main/x86_64/apk-tools-static-2.14.6-r2.apk
 # add package manager to UML
 foo@gcc:~/linux-5.12.4$ tar -xvf apk-tools-static-*.apk -C /mnt/uml
 # install Alpine filesystem
@@ -62,15 +61,13 @@ foo@gcc:~/linux-5.12.4$ make modules ARCH=um SUBARCH=x86_64 # compile the kernel
 foo@gcc:~/linux-5.12.4$ make modules_install INSTALL_MOD_PATH=/mnt/uml ARCH=um SUBARCH=x86_64 # install the kernel modules to the filesystem
 
 # update the filesystem table
-foo@gcc:~/linux-5.12.4$ echo "LABEL=ALPINE_ROOT / ext4 defaults 0 0" > /mnt/uml/etc/fstab
-foo@gcc:~/linux-5.12.4$ echo "https://dl-cdn.alpinelinux.org/alpine/edge/main" > /mnt/uml/etc/apk/repositories
-foo@gcc:~/linux-5.12.4$ echo "https://dl-cdn.alpinelinux.org/alpine/edge/community" >> /mnt/uml/etc/apk/repositories
-foo@gcc:~/linux-5.12.4$ echo "nameserver 8.8.8.8" > /mnt/uml/etc/resolv.conf
-
-# It is critical to unmount the filesystem before starting the kernel
-foo@gcc:~/linux-5.12.4$ umount /mnt/uml
-
-# open network proxy on host
+echo "LABEL=ALPINE_ROOT / ext4 defaults 0 0" > /mnt/uml/etc/fstab
+echo "https://dl-cdn.alpinelinux.org/alpine/edge/main" > /mnt/uml/etc/apk/repositories
+echo "https://dl-cdn.alpinelinux.org/alpine/edge/community" >> /mnt/uml/etc/apk/repositories
+echo "nameserver 8.8.8.8" > /mnt/uml/etc/resolv.conf
+# mount the filesystem before starting the kernel
+umount /mnt/uml
+# on host
 export TMPDIR=/tmp
 slirp > /dev/null 2>&1 &
 bg %1
