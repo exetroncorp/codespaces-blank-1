@@ -1,4 +1,5 @@
 *.iso
+linux-6.6.68
 *.qcow2
 *.img
 *.raw
@@ -35,3 +36,5 @@
 *.mp4
 *.mpeg
 qemu-9.2.0
+qemu-9.2.0.tar.xz
+qemu-system-x86_8.2.2+ds-0ubuntu1_amd64.deb

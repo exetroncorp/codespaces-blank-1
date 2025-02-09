@@ -7,18 +7,18 @@ Host -> Docker GCC -> UML w/ Alpine
 # get docker for compiling
 foo@host:~$ docker pull gcc
 # launch new container
-foo@host:~$ docker run --privileged --name gcc -it gcc /bin/bash
+foo@host:~$ docker run --privileged --name gcc -it gcsc /bin/bash
 # Attatch to existing container
 foo@host:~$ docker exec -it gcc /bin/bash
 
 # Install deps
 cd ~
 apt update
-apt-get -y install build-essential flex bison xz-utils wget ca-certificates linux-headers-amd64 bc  slirp kmod vim flex
-and configure the linux kernel
+apt-get -y install build-essential flex bison xz-utils wget ca-certificates linux-headers-amd64 bc  slirp kmod vim flex fuse2fs
+and configure the linux kernel 
 wget https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.6.68.tar.xz
 tar -xf linux-6.6.68.tar.xz  # decompress
-cd linux-6.6.68.tar.xz 
+cd linux-6.6.68 
 make mrproper # clean artifacts
 make defconfig ARCH=um # set a bunch of default configurations (eg: ext4, initramfs etc..) essential
 make menuconfig ARCH=um # add your own custom config (optional)
@@ -37,33 +37,31 @@ File Systems
   - The extended 4 (ext4) filesystem (on by default)
 => Save and exit
 
-# create and mount the filesystem
-foo@gcc:~/linux-5.12.4$ rm -rf ./root_fs 
-foo@gcc:~/linux-5.12.4$ dd if=/dev/zero of=root_fs bs=1M count=1024
-foo@gcc:~/linux-5.12.4$ mkfs.ext4 -L ALPINE_ROOT root_fs
-foo@gcc:~/linux-5.12.4$ mkdir /mnt/uml
-foo@gcc:~/linux-5.12.4$ mount -t ext4 -o loop root_fs /mnt/uml
-foo@gcc:~/linux-5.12.4$ lsblk | grep loop0 # optional 
-foo@gcc:~/linux-5.12.4$ mount | grep uml # optional
+
+rm -rf ./root_fs 
+dd if=/dev/zero of=root_fs bs=1M count=1024
+mkfs.ext4 -L ALPINE_ROOT root_fs
+mkdir /mnt/uml
+fuse2fs root_fs /mnt/uml 
+# lsblk | grep loop0 # optional 
+# foo@gcc:~/linux-5.12.4$ mount | grep uml # optional
 
 # Download and install the Alpine linux filesystem and tools
-foo@gcc:~/linux-5.12.4$ curl -LO https://dl-cdn.alpinelinux.org/alpine/v3.21/main/x86_64/apk-tools-static-2.14.6-r2.apk
-# add package manager to UML
-foo@gcc:~/linux-5.12.4$ tar -xvf apk-tools-static-*.apk -C /mnt/uml
-# install Alpine filesystem
-foo@gcc:~/linux-5.12.4$  /mnt/uml/sbin/apk.static --repository http://dl-cdn.alpinelinux.org/alpine/v3.13/main/ --update-cache --allow-untrusted --root  /mnt/uml --initdb add alpine-base 
-foo@gcc:~/linux-5.12.4$ ls -lah /mnt/uml
+curl -LO https://dl-cdn.alpinelinux.org/alpine/v3.21/main/x86_64/apk-tools-static-2.14.6-r2.apk
+tar -xvf apk-tools-static-*.apk -C /mnt/uml
+/mnt/uml/sbin/apk.static --repository http://dl-cdn.alpinelinux.org/alpine/v3.21/main/ --update-cache --allow-untrusted --root  /mnt/uml --initdb add alpine-base 
+
 
 # Build the linux kernel and add kernel modules to filesystem
-foo@gcc:~/linux-5.12.4$ make -j$(nproc) ARCH=um # compile linux
-foo@gcc:~/linux-5.12.4$ ls -lah 
-foo@gcc:~/linux-5.12.4$ make modules ARCH=um SUBARCH=x86_64 # compile the kernel modules
-foo@gcc:~/linux-5.12.4$ make modules_install INSTALL_MOD_PATH=/mnt/uml ARCH=um SUBARCH=x86_64 # install the kernel modules to the filesystem
+ make -j$(nproc) ARCH=um # compile linux
+ ls -lah 
+ make modules ARCH=um SUBARCH=x86_64 # compile the kernel modules
+ make modules_install INSTALL_MOD_PATH=/mnt/uml ARCH=um SUBARCH=x86_64 # install the kernel modules to the filesystem
 
 # update the filesystem table
 echo "LABEL=ALPINE_ROOT / ext4 defaults 0 0" > /mnt/uml/etc/fstab
-echo "https://dl-cdn.alpinelinux.org/alpine/edge/main" > /mnt/uml/etc/apk/repositories
-echo "https://dl-cdn.alpinelinux.org/alpine/edge/community" >> /mnt/uml/etc/apk/repositories
+echo "https://dl-cdn.alpinelinux.org/alpine/v3.21/main" > /mnt/uml/etc/apk/repositories
+echo "https://dl-cdn.alpinelinux.org/alpine/v3.21/community" >> /mnt/uml/etc/apk/repositories
 echo "nameserver 8.8.8.8" > /mnt/uml/etc/resolv.conf
 # mount the filesystem before starting the kernel
 umount /mnt/uml
@@ -91,3 +89,47 @@ foo@gcc:~/linux-5.12.4$ kill %1 # close slirp
 
 # Inside UML
 [root@uml:/ ] $ ping -c 4 8.8.8.8  # Test raw IP connectivity
+
+tap
+
+
+PS1="[\u@uml:\w ] $ "
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+mount -t proc proc proc/
+mount -t sysfs sys sys/
+ifconfig eth0 192.168.100.2 netmask 255.255.255.0 up
+route add default gw 192.168.100.1
+echo "nameserver 8.8.8.8" > /etc/resolv.conf
+nslookup google.com
+mkdir -p /dev/shm   
+mount -t tmpfs tmpfs /dev/shm
+apk update
+apk add podman
+podman info
+
+# on host
+# # Create a TUN device
+# sudo tunctl -u $USER -t uml0
+# sudo ifconfig uml0 192.168.100.1 netmask 255.255.255.0 up
+
+# # On host:
+# sudo sysctl -w net.ipv4.ip_forward=1
+# sudo iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+# sudo iptables -A FORWARD -i uml0 -o eth0 -j ACCEPT
+# sudo iptables -A FORWARD -i eth0 -o uml0 -j ACCEPT
+
+mkdir -p /dev/shm   
+mount -t tmpfs tmpfs /dev/shm 
+
+
+#  Check if the devices cgroup is mounted
+ls /sys/fs/cgroup/devices
+
+# If missing, manually mount it (temporary)
+mkdir -p /sys/fs/cgroup/devices
+mount -t cgroup -o devices none /sys/fs/cgroup/devices
+
+# For persistence, add to `/etc/fstab`:
+echo "none /sys/fs/cgroup/devices cgroup defaults,devices 0 0" |  tee -a /etc/fstab
+
+podman run   --cgroups=disabled  --network=slirp4netns  nginx
